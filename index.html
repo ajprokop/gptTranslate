@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Multi-Lingual GPT Beatles</title>
+    <link rel="stylesheet" href="css/openai.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+    <style>
+      .flex-container {
+        display: flex;
+        width: 1100px;
+        height: 500px;
+        flex-wrap: wrap;
+      }
+
+      .flex-container,
+      .flex-col {
+        display: flex;
+      }
+
+      .flex-col {
+        flex-direction: column;
+      }
+
+      .large-box {
+        text-align: left;
+        width: 550px;
+        height: 535px;
+      }
+
+      .small-box {
+        text-align: left;
+        width: 325px;
+        height: 535px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="flex-container">
+      <div class="container-fluid"></div>
+      <br>
+      <h1>Multi-Lingual GPT Beatles</h1>
+      <br>
+      <div class="col-sm-12 ">
+        <div style="width: 100%" class="form-group mb-3">
+          <textarea placeholder="Message" class="form-control" id="message" rows="1"></textarea>
+        </div>
+        <button style="padding: 0.8rem 8rem" id="sendMsg" class="btn btn-primary " onclick="sendMsg()" disabled>Send</button>
+        <button style="padding: 0.8rem 8rem" id="reset" class="btn btn-primary " onclick="reset()">GPT4</button>
+      </div>
+      <br>
+      <div class="large-box">
+        <div class="col-12">
+          <label class="center">
+            <b>
+              <u>GPT Conversation</u>
+            </b>
+          </label>
+          <div id="console-log" class="console-div" readonly=""></div>
+        </div>
+      </div>
+      <div class="flex-col">
+        <div class="large-box">
+          <div class="col-12">
+            <label class="center">
+              <b>
+                <u>Translation </b>
+              </u>
+            </label>
+            <label for="dog-names">Choose language:</label>
+            <select name="languages" id="languages">
+              <option value="French">French</option>
+              <option value="Spanish">Spanish</option>
+              <option value="German">German</option>
+              <option value="Russian">Russian</option>
+              <option value="Danish">Danish</option>
+              <option value="Japanese">Japanese</option>
+              <option value="Arabic">Arabic</option>
+              <option value="Swahili">Swahili</option>
+              <option value="Hindi">Hindi</option>
+              <option value="Italian">Italian</option>
+              <option value="Greek">Greek</option>
+              <option value="Polish">Polish</option>
+              <option value="Dutch">Dutch</option>
+              <option value="Korean">Korean</option>
+              <option value="Portuguese">Portuguese</option>
+              <option value="English">English</option>
+            </select>
+            <div id="console-log2" class="console-div2" readonly=""></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script type="text/javascript">
+      const OPEN_AI_CHAT_URL = "https://api.openai.com/v1/chat/completions";
+      const OPENAI_AUTH = "xxxxxxx";
+      const BEATLES = "I am a music enthusiast named Rocky who helps people with their questions about the band, The Beatles. I am upbeat and friendly. I introduce myself when first saying hello. I only introduce myself once.  Do not talk about bands other than The Beatles. Whenever I give a website URL that begines with www, I prefix it with https://";
+      var gptConversation = [];
+      var systemPrompt = BEATLES;
+      const GPT4 = "gpt-4-1106-preview";
+      const TURBO = "gpt-3.5-turbo";
+      var MODEL;
+      var currentLanguage = "English";
+
+      var activities = document.getElementById("languages");
+      activities.addEventListener("click", function() {
+        var e = document.getElementById("languages");
+        var value = e.value;
+        var text = e.options[e.selectedIndex].text;
+        if (text != currentLanguage) {
+          currentLanguage = text;
+          establishInitialResponse();
+          clearAllChats();
+        }
+      });
+
+      $(document).ready(init);
+
+      function init() {
+        MODEL = TURBO;
+        var input = document.getElementById("message");
+        input.addEventListener("keyup", function(event) {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            document.getElementById("sendMsg").click();
+          }
+        });
+        establishInitialResponse();
+      }
+      
+      async function establishInitialResponse() {
+        gptConversation = [];
+        mytext = "";
+        var systemRole = `[{"role":"system", "content":"${systemPrompt}"}]`;
+        gptConversation = JSON.parse(systemRole);
+        var user = {
+          role: "user",
+          content: "Hello"
+        }
+        gptConversation.push(user);
+        initialPrompt = await callGPT(gptConversation, returnFromGPT);
+        $('#sendMsg').prop("disabled", false);
+      }
+
+      function reset() {
+        if (document.getElementById('reset').innerHTML == "GPT4") {
+          MODEL = GPT4;
+          document.getElementById('reset').innerHTML = "GPT3.5"
+        } else {
+          MODEL = TURBO;
+          document.getElementById('reset').innerHTML = "GPT4"
+        }
+        establishInitialResponse();
+        clearAllChats();
+      }
+
+      function clearAllChats() {
+        $('#console-log').val("");
+        $("#console-log span").remove();
+        $('#console-log2').val("");
+        $("#console-log2 span").remove();
+      }
+
+      async function returnFromGPT(message) {
+        addToConsole(`Agent: ${message}`, "Agent");
+        document.getElementById('message').value = "";
+        var e = document.getElementById("languages");
+        var value = e.value;
+        var text = e.options[e.selectedIndex].text;
+        let tmpConversation = [];
+        let tmpUserRole = {
+          role: "user",
+          content: `Translate this to ${text}: ${message}`
+        }
+        console.dir(tmpUserRole);
+        tmpConversation.push(tmpUserRole);
+        await callGPT(tmpConversation, returnFromGPT2);
+      }
+
+      function returnFromGPT2(message) {
+        addToConsole2(`Agent: ${message}`, "Agent");
+        document.getElementById('message').value = "";
+      }
+
+      async function callGPT(message, returnFunction) {
+        const openAI = {
+          model: MODEL,
+          messages: message,
+          max_tokens: 1200,
+          presence_penalty: 0.5,
+          frequency_penalty: 0.5,
+          temperature: 0
+        };
+        var settings = {
+          "url": OPEN_AI_CHAT_URL,
+          "method": "post",
+          "timeout": 0,
+          "headers": {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${OPENAI_AUTH}`,
+          },
+          data: JSON.stringify(openAI)
+        };
+        await $.ajax(settings).done(function(response) {
+          console.log(response);
+          var gptMessage = {
+            role: "assistant",
+            content: response.choices[0].message.content
+          }
+          gptConversation.push(gptMessage);
+          returnFunction(response.choices[0].message.content);
+        });
+      }
+
+      async function sendMsg() {
+        let userMessage = document.getElementById('message').value;
+        addToConsole(`User: ${userMessage}`, "User");
+        var gptMessage = {
+          role: "user",
+          content: userMessage
+        }
+        gptConversation.push(gptMessage);
+        await callGPT(gptConversation, returnFromGPT);
+      }
+
+      function writeToTrace(text, requestor) {
+        text = text.trim();
+        addToConsole(text, requestor);
+      }
+
+      function addToConsole(msg, requestor) {
+        var span = createLogElement(msg, requestor);
+        $('#console-log').append(span);
+        document.getElementById("console-log").scrollTop = document.getElementById("console-log").scrollHeight;
+      }
+
+      function writeToTrace2(text, requestor) {
+        text = text.trim();
+        addToConsole2(text, requestor);
+      }
+
+      function addToConsole2(msg, requestor) {
+        var span = createLogElement(msg, requestor);
+        $('#console-log2').append(span);
+        document.getElementById("console-log2").scrollTop = document.getElementById("console-log2").scrollHeight;
+      }
+
+      function createLogElement(msg, type) {
+        var span = document.createElement('span');
+        if (type == "User") {
+          $(span).addClass('log-element-caller');
+        } else {
+          $(span).addClass('log-element-agent');
+        }
+        var msgArray = msg.split(':');
+        var sender = msgArray[0];
+        var restMsg = "";
+        for (var i = 1; i < msgArray.length; i++) {
+          if (i == 1) {
+            restMsg += " " + msgArray[i];
+          } else {
+            restMsg += ":" + msgArray[i];
+          }
+        }
+        var sendSpan = document.createElement('span');
+        $(sendSpan).addClass('log-element-sender');
+        sendSpan.innerHTML = sender + ":";
+        var msgSpan = document.createElement('span');
+        $(msgSpan).addClass('log-element-msg');
+        restMsg = restMsg.replaceAll(`\n`, `<BR>`)
+        $(msgSpan).append(messageWithLink(restMsg));
+        $(span).append(sendSpan);
+        $(span).append(msgSpan);
+        return span;
+      }
+
+      function messageWithLink(msg) {
+        var matches = msg.match(/[(http(s)?):\/\/(www\.)?a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/g);
+        if (matches) {
+          for (var i = 0; i < matches.length; i++) {
+            if (matches[i].toLowerCase().indexOf("http") != -1) {
+              // The user or agent put a link into the chat window
+              msg = msg.replace(matches[i], '  <a href = "' + matches[i] + '"target = "_blank" > ' + matches[i] + ' </a>');
+              }
+            }
+          }
+          return msg;
+        }
+    </script>
+  </body>
+</html>
